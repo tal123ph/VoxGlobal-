@@ -1,0 +1,6 @@
+{
+  "name": "VoxGlobal - AI Multilingual Text-to-Speech",
+  "description": "Convert text into lifelike natural-sounding speech across 40+ languages including Urdu, and turn generated audio into branded video and thumbnails for YouTube, TikTok, and podcasts with customizable sound waveforms and MP4 export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

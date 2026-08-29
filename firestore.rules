@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() <= 256 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64)) &&
+             (!('preferences' in data) || data.preferences is map);
+    }
+
+    function isValidAudioItem(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.text is string && data.text.size() <= 25000 &&
+             data.voice is string && data.voice.size() <= 64 &&
+             (!('gender' in data) || (data.gender is string && data.gender.size() <= 32)) &&
+             (!('ageRange' in data) || (data.ageRange is string && data.ageRange.size() <= 32)) &&
+             (!('style' in data) || (data.style is string && data.style.size() <= 64)) &&
+             (!('language' in data) || (data.language is string && data.language.size() <= 64)) &&
+             (!('speed' in data) || (data.speed is number && data.speed >= 0.25 && data.speed <= 4.0)) &&
+             (!('pitch' in data) || (data.pitch is number && data.pitch >= -20 && data.pitch <= 20)) &&
+             (!('duration' in data) || data.duration is number) &&
+             (!('wordCount' in data) || data.wordCount is number) &&
+             (!('audioBase64' in data) || (data.audioBase64 is string && data.audioBase64.size() <= 1000000)) &&
+             (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() <= 64)) &&
+             (!('chunked' in data) || data.chunked is bool) &&
+             (!('chunkCount' in data) || data.chunkCount is number) &&
+             (!('isFavorite' in data) || data.isFavorite is bool) &&
+             (!('isMultiSpeaker' in data) || data.isMultiSpeaker is bool) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
+
+    function isValidChunk(data) {
+      return data.index is number && data.index >= 0 &&
+             data.data is string && data.data.size() <= 800000;
+    }
+
+    function isValidPublicShare(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.text is string && data.text.size() <= 25000 &&
+             data.voice is string && data.voice.size() <= 64 &&
+             (!('userId' in data) || (data.userId is string && data.userId.size() <= 128)) &&
+             (!('creatorName' in data) || (data.creatorName is string && data.creatorName.size() <= 128)) &&
+             (!('gender' in data) || (data.gender is string && data.gender.size() <= 32)) &&
+             (!('ageRange' in data) || (data.ageRange is string && data.ageRange.size() <= 32)) &&
+             (!('style' in data) || (data.style is string && data.style.size() <= 64)) &&
+             (!('language' in data) || (data.language is string && data.language.size() <= 64)) &&
+             (!('speed' in data) || (data.speed is number && data.speed >= 0.25 && data.speed <= 4.0)) &&
+             (!('pitch' in data) || (data.pitch is number && data.pitch >= -20 && data.pitch <= 20)) &&
+             (!('duration' in data) || data.duration is number) &&
+             (!('wordCount' in data) || data.wordCount is number) &&
+             (!('audioBase64' in data) || (data.audioBase64 is string && data.audioBase64.size() <= 1000000)) &&
+             (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() <= 64)) &&
+             (!('chunked' in data) || data.chunked is bool) &&
+             (!('chunkCount' in data) || data.chunkCount is number) &&
+             (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64));
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Disallow querying all users
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Audio generations per user
+      match /audio_generations/{audioId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(audioId) && isValidAudioItem(request.resource.data) && request.resource.data.userId == userId;
+        allow update: if isOwner(userId) && isValidId(audioId) && isValidAudioItem(request.resource.data) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isOwner(userId) && isValidId(audioId);
+
+        // Audio chunks for large voice records
+        match /chunks/{chunkId} {
+          allow get, list: if isOwner(userId);
+          allow create, update: if isOwner(userId) && isValidId(chunkId) && isValidChunk(request.resource.data);
+          allow delete: if isOwner(userId) && isValidId(chunkId);
+        }
+      }
+
+      // User projects (Audio, Video & Thumbnail projects)
+      match /user_projects/{projectId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidId(projectId);
+        allow delete: if isOwner(userId) && isValidId(projectId);
+      }
+    }
+
+    // Public shares
+    match /public_shares/{shareId} {
+      allow get, list: if true;
+      allow create: if isValidId(shareId) && isValidPublicShare(request.resource.data) &&
+                      (!('userId' in request.resource.data) || !isAuthenticated() || request.resource.data.userId == request.auth.uid);
+      allow update: if isAuthenticated() && isValidId(shareId) && isValidPublicShare(request.resource.data) &&
+                      (('userId' in resource.data) && resource.data.userId == request.auth.uid) &&
+                      (!('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId);
+      allow delete: if isAuthenticated() && isValidId(shareId) && (('userId' in resource.data) && resource.data.userId == request.auth.uid);
+
+      match /chunks/{chunkId} {
+        allow get, list: if true;
+        allow create: if isValidId(chunkId) && isValidChunk(request.resource.data);
+        allow update, delete: if isAuthenticated() && isValidId(chunkId) &&
+                                get(/databases/$(database)/documents/public_shares/$(shareId)).data.userId == request.auth.uid;
+      }
+    }
+  }
+}

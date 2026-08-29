@@ -1,0 +1,115 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile with voice customization preferences and settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique Firebase Auth user ID" },
+        "email": { "type": "string", "maxLength": 256, "description": "User email address" },
+        "displayName": { "type": "string", "maxLength": 128, "description": "User display name" },
+        "photoURL": { "type": "string", "maxLength": 1024, "description": "User profile avatar URL" },
+        "createdAt": { "type": "string", "maxLength": 64, "description": "ISO timestamp of account creation" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "ISO timestamp of last update" },
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "preferredGender": { "type": "string", "enum": ["all", "female", "male"] },
+            "preferredAgeRange": { "type": "string", "enum": ["child", "adult", "senior"] },
+            "preferredStyle": { "type": "string", "maxLength": 64 },
+            "preferredLanguage": { "type": "string", "maxLength": 64 },
+            "defaultSpeed": { "type": "number" },
+            "defaultPitch": { "type": "number" },
+            "preferredVoice": { "type": "string", "maxLength": 64 }
+          }
+        }
+      },
+      "required": ["userId", "email"]
+    },
+    "audio_generations": {
+      "title": "Audio Generation",
+      "description": "Synthesized text-to-speech audio records, custom parameters, and base64 audio clips.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique audio generation record ID" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Owner user ID" },
+        "text": { "type": "string", "maxLength": 25000, "description": "Synthesized script text" },
+        "voice": { "type": "string", "maxLength": 64, "description": "AI Voice Persona used" },
+        "gender": { "type": "string", "maxLength": 32, "description": "Voice gender selected" },
+        "ageRange": { "type": "string", "maxLength": 32, "description": "Voice age range selected" },
+        "style": { "type": "string", "maxLength": 64, "description": "Speaking style" },
+        "language": { "type": "string", "maxLength": 64, "description": "Language and dialect" },
+        "speed": { "type": "number", "description": "Playback speech rate" },
+        "pitch": { "type": "number", "description": "Pitch adjustment offset" },
+        "duration": { "type": "number", "description": "Audio duration in seconds" },
+        "wordCount": { "type": "number", "description": "Total word count" },
+        "audioBase64": { "type": "string", "maxLength": 1000000, "description": "Linear PCM WAV audio in base64 string format" },
+        "mimeType": { "type": "string", "maxLength": 64, "description": "MIME type audio/wav" },
+        "chunked": { "type": "boolean", "description": "Whether audio data is stored in subcollection chunks" },
+        "chunkCount": { "type": "number", "description": "Number of chunks" },
+        "isFavorite": { "type": "boolean", "description": "Whether user marked this recording as favorite" },
+        "isMultiSpeaker": { "type": "boolean", "description": "Whether this was a multi-speaker script" },
+        "createdAt": { "type": "string", "maxLength": 64, "description": "ISO timestamp of generation" }
+      },
+      "required": ["id", "userId", "text", "voice", "createdAt"]
+    },
+    "audio_chunk": {
+      "title": "Audio Chunk",
+      "description": "Fragmented audio payload chunk for large recordings exceeding single document thresholds.",
+      "type": "object",
+      "properties": {
+        "index": { "type": "number", "description": "Index of the audio chunk" },
+        "data": { "type": "string", "maxLength": 800000, "description": "Base64 audio sub-segment" }
+      },
+      "required": ["index", "data"]
+    },
+    "public_shares": {
+      "title": "Public Audio Share",
+      "description": "Publicly shared audio snippets accessible via unique public share URLs and for social media sharing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique public share identifier" },
+        "userId": { "type": "string", "maxLength": 128, "description": "Creator User ID or anonymous" },
+        "creatorName": { "type": "string", "maxLength": 128, "description": "Name of the creator who shared the audio" },
+        "text": { "type": "string", "maxLength": 25000, "description": "Audio script transcript" },
+        "voice": { "type": "string", "maxLength": 64, "description": "AI Voice name" },
+        "gender": { "type": "string", "maxLength": 32, "description": "Voice gender" },
+        "ageRange": { "type": "string", "maxLength": 32, "description": "Voice age range" },
+        "style": { "type": "string", "maxLength": 64, "description": "Speaking style" },
+        "language": { "type": "string", "maxLength": 64, "description": "Language used" },
+        "speed": { "type": "number", "description": "Speech speed rate" },
+        "pitch": { "type": "number", "description": "Pitch adjustment" },
+        "duration": { "type": "number", "description": "Audio duration in seconds" },
+        "wordCount": { "type": "number", "description": "Word count" },
+        "audioBase64": { "type": "string", "maxLength": 1000000, "description": "Audio file payload in base64 format" },
+        "mimeType": { "type": "string", "maxLength": 64, "description": "Audio MIME type" },
+        "chunked": { "type": "boolean", "description": "Whether audio is split into subcollection chunks" },
+        "chunkCount": { "type": "number", "description": "Total chunks count" },
+        "createdAt": { "type": "string", "maxLength": 64, "description": "Creation timestamp" }
+      },
+      "required": ["id", "text", "voice", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/audio_generations/{audioId}": {
+      "schema": "audio_generations",
+      "description": "Synthesized audio library records belonging to the authenticated user"
+    },
+    "/users/{userId}/audio_generations/{audioId}/chunks/{chunkId}": {
+      "schema": "audio_chunk",
+      "description": "Audio payload chunks for large user recordings"
+    },
+    "/public_shares/{shareId}": {
+      "schema": "public_shares",
+      "description": "Publicly accessible audio snippets for public URL links and social shares"
+    },
+    "/public_shares/{shareId}/chunks/{chunkId}": {
+      "schema": "audio_chunk",
+      "description": "Public audio payload chunks for large shared recordings"
+    }
+  }
+}
